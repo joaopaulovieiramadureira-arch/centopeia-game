@@ -5,9 +5,11 @@ const pauseBtn = document.getElementById('pauseBtn');
 const scoreDisplay = document.getElementById('score');
 const lengthDisplay = document.getElementById('length');
 const insectsDisplay = document.getElementById('insects');
+const wallsDisplay = document.getElementById('walls');
 const gameOverScreen = document.getElementById('gameOver');
 const finalScoreDisplay = document.getElementById('finalScore');
 const finalLengthDisplay = document.getElementById('finalLength');
+const finalWallsDisplay = document.getElementById('finalWalls');
 
 // Configurações do jogo
 const gridSize = 20;
@@ -18,12 +20,15 @@ let gameRunning = false;
 let gamePaused = false;
 let score = 0;
 let insectCount = 0;
+let wallCount = 0;
 
-// Centopeia
+// Centopeia com tamanho inicial maior
 const centipede = [
     { x: 10, y: 10 },
     { x: 9, y: 10 },
-    { x: 8, y: 10 }
+    { x: 8, y: 10 },
+    { x: 7, y: 10 },
+    { x: 6, y: 10 }
 ];
 
 let direction = { x: 1, y: 0 };
@@ -34,6 +39,9 @@ let insect = {
     x: Math.floor(Math.random() * tileCount),
     y: Math.floor(Math.random() * tileCount)
 };
+
+// Paredes (aparecem após 10 pontos)
+let walls = [];
 
 // Controladores
 startBtn.addEventListener('click', () => {
@@ -56,26 +64,37 @@ pauseBtn.addEventListener('click', () => {
     }
 });
 
+// Controles com WASD e Setas
 document.addEventListener('keydown', (e) => {
     if (!gameRunning) return;
     
-    switch(e.key) {
-        case 'ArrowUp':
+    let handled = false;
+    
+    switch(e.key.toLowerCase()) {
+        case 'w':
+        case 'arrowup':
             if (direction.y === 0) nextDirection = { x: 0, y: -1 };
-            e.preventDefault();
+            handled = true;
             break;
-        case 'ArrowDown':
+        case 's':
+        case 'arrowdown':
             if (direction.y === 0) nextDirection = { x: 0, y: 1 };
-            e.preventDefault();
+            handled = true;
             break;
-        case 'ArrowLeft':
+        case 'a':
+        case 'arrowleft':
             if (direction.x === 0) nextDirection = { x: -1, y: 0 };
-            e.preventDefault();
+            handled = true;
             break;
-        case 'ArrowRight':
+        case 'd':
+        case 'arrowright':
             if (direction.x === 0) nextDirection = { x: 1, y: 0 };
-            e.preventDefault();
+            handled = true;
             break;
+    }
+    
+    if (handled) {
+        e.preventDefault();
     }
 });
 
@@ -104,6 +123,12 @@ function gameLoop() {
         return;
     }
     
+    // Verificar colisão com paredes
+    if (walls.some(wall => wall.x === newHead.x && wall.y === newHead.y)) {
+        endGame();
+        return;
+    }
+    
     // Adicionar nova cabeça
     centipede.unshift(newHead);
     
@@ -111,6 +136,12 @@ function gameLoop() {
     if (newHead.x === insect.x && newHead.y === insect.y) {
         score += 10 * centipede.length;
         insectCount++;
+        
+        // A cada novo inseto após 10 pontos, adiciona uma parede
+        if (insectCount > 1 && insectCount % 1 === 0 && score >= 10) {
+            addWall();
+        }
+        
         // Gerar novo inseto
         spawnInsect();
         // Não remover cauda (centopeia cresce)
@@ -129,6 +160,26 @@ function gameLoop() {
     setTimeout(gameLoop, 100);
 }
 
+function addWall() {
+    let newWall;
+    let valid = false;
+    
+    while (!valid) {
+        newWall = {
+            x: Math.floor(Math.random() * tileCount),
+            y: Math.floor(Math.random() * tileCount)
+        };
+        
+        // Verificar se não colide com a centopeia ou inseto
+        valid = !centipede.some(segment => segment.x === newWall.x && segment.y === newWall.y) &&
+                !(newWall.x === insect.x && newWall.y === insect.y) &&
+                !walls.some(w => w.x === newWall.x && w.y === newWall.y);
+    }
+    
+    walls.push(newWall);
+    wallCount++;
+}
+
 function spawnInsect() {
     let newInsect;
     let valid = false;
@@ -139,8 +190,9 @@ function spawnInsect() {
             y: Math.floor(Math.random() * tileCount)
         };
         
-        // Verificar se não colide com a centopeia
-        valid = !centipede.some(segment => segment.x === newInsect.x && segment.y === newInsect.y);
+        // Verificar se não colide com a centopeia ou paredes
+        valid = !centipede.some(segment => segment.x === newInsect.x && segment.y === newInsect.y) &&
+                !walls.some(wall => wall.x === newInsect.x && wall.y === newInsect.y);
     }
     
     insect = newInsect;
@@ -166,6 +218,11 @@ function draw() {
         ctx.stroke();
     }
     
+    // Desenhar paredes
+    walls.forEach(wall => {
+        drawWall(wall.x, wall.y);
+    });
+    
     // Desenhar inseto
     drawInsect(insect.x, insect.y);
     
@@ -189,16 +246,47 @@ function draw() {
     });
 }
 
+function drawWall(x, y) {
+    const centerX = x * gridSize + gridSize / 2;
+    const centerY = y * gridSize + gridSize / 2;
+    
+    // Desenhar parede cinza sólida
+    ctx.fillStyle = '#95a5a6';
+    ctx.fillRect(x * gridSize + 2, y * gridSize + 2, gridSize - 4, gridSize - 4);
+    
+    // Borda mais escura
+    ctx.strokeStyle = '#34495e';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x * gridSize + 2, y * gridSize + 2, gridSize - 4, gridSize - 4);
+    
+    // Padrão de cruz
+    ctx.strokeStyle = '#34495e';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(centerX, y * gridSize + 2);
+    ctx.lineTo(centerX, y * gridSize + gridSize - 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x * gridSize + 2, centerY);
+    ctx.lineTo(x * gridSize + gridSize - 2, centerY);
+    ctx.stroke();
+}
+
 function drawHead(x, y) {
     const centerX = x * gridSize + gridSize / 2;
     const centerY = y * gridSize + gridSize / 2;
-    const radius = gridSize / 2 - 2;
+    const radius = gridSize / 2 - 1;
     
-    // Corpo principal
+    // Corpo principal maior
     ctx.fillStyle = '#e74c3c';
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
     ctx.fill();
+    
+    // Borda
+    ctx.strokeStyle = '#c0392b';
+    ctx.lineWidth = 2;
+    ctx.stroke();
     
     // Olhos
     ctx.fillStyle = 'white';
@@ -220,10 +308,10 @@ function drawHead(x, y) {
         ctx.fill();
     }
     
-    // Antenas
+    // Antenas maiores
     ctx.strokeStyle = '#e74c3c';
-    ctx.lineWidth = 2;
-    const antennaLength = gridSize * 0.6;
+    ctx.lineWidth = 3;
+    const antennaLength = gridSize * 1;
     const angle = Math.atan2(direction.y, direction.x);
     
     ctx.beginPath();
@@ -246,7 +334,7 @@ function drawHead(x, y) {
 function drawSegment(x, y, index) {
     const centerX = x * gridSize + gridSize / 2;
     const centerY = y * gridSize + gridSize / 2;
-    const size = gridSize / 2 - 2;
+    const size = gridSize / 2 - 1;
     
     // Variação de cor (gradiente)
     const hue = 20 + (index * 5) % 30;
@@ -256,13 +344,18 @@ function drawSegment(x, y, index) {
     ctx.arc(centerX, centerY, size, 0, Math.PI * 2);
     ctx.fill();
     
-    // Pernas (pequenas linhas saindo do corpo)
+    // Borda
+    ctx.strokeStyle = `hsl(${hue}, 85%, 30%)`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // Pernas MAIORES (8 pernas em vez de 4, saindo para todos os lados)
     ctx.strokeStyle = `hsl(${hue}, 85%, 40%)`;
     ctx.lineWidth = 2;
     
-    for (let i = 0; i < 4; i++) {
-        const angle = (Math.PI * i) / 2;
-        const legLength = size * 1.2;
+    for (let i = 0; i < 8; i++) {
+        const angle = (Math.PI * 2 * i) / 8;
+        const legLength = size * 1.8;
         ctx.beginPath();
         ctx.moveTo(centerX, centerY);
         ctx.lineTo(
@@ -283,6 +376,11 @@ function drawInsect(x, y) {
     ctx.beginPath();
     ctx.ellipse(centerX, centerY, size, size * 1.3, 0, 0, Math.PI * 2);
     ctx.fill();
+    
+    // Borda
+    ctx.strokeStyle = '#229954';
+    ctx.lineWidth = 2;
+    ctx.stroke();
     
     // Pernas
     ctx.strokeStyle = '#229954';
@@ -316,12 +414,14 @@ function updateDisplay() {
     scoreDisplay.textContent = score;
     lengthDisplay.textContent = centipede.length;
     insectsDisplay.textContent = insectCount;
+    wallsDisplay.textContent = wallCount;
 }
 
 function endGame() {
     gameRunning = false;
     finalScoreDisplay.textContent = score;
     finalLengthDisplay.textContent = centipede.length;
+    finalWallsDisplay.textContent = wallCount;
     gameOverScreen.classList.remove('hidden');
 }
 
