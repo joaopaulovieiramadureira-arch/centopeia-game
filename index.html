@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Centopeia</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🐛 Jogo da Centopeia 🐛</h1>
+        <div class="score-board">
+            <div>Pontos: <span id="score">0</span></div>
+            <div>Tamanho: <span id="length">3</span> pernas</div>
+            <div>Insetos comidos: <span id="insects">0</span></div>
+        </div>
+        <canvas id="gameCanvas" width="600" height="600"></canvas>
+        <div class="controls">
+            <p>Use as <strong>SETAS</strong> do teclado para controlar</p>
+            <button id="startBtn">Iniciar Jogo</button>
+            <button id="pauseBtn">Pausar</button>
+        </div>
+        <div id="gameOver" class="game-over hidden">
+            <div class="game-over-content">
+                <h2>GAME OVER!</h2>
+                <p>Pontos Finais: <span id="finalScore">0</span></p>
+                <p>Tamanho da Centopeia: <span id="finalLength">0</span> pernas</p>
+                <button onclick="location.reload()">Jogar Novamente</button>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
