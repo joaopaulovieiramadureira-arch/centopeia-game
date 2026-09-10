@@ -11,18 +11,15 @@ const finalScoreDisplay = document.getElementById('finalScore');
 const finalLengthDisplay = document.getElementById('finalLength');
 const finalWallsDisplay = document.getElementById('finalWalls');
 
-// Configurações do jogo
 const gridSize = 20;
 const tileCount = canvas.width / gridSize;
 
-// Estado do jogo
 let gameRunning = false;
 let gamePaused = false;
 let score = 0;
 let insectCount = 0;
 let wallCount = 0;
 
-// Centopeia com tamanho ligeiramente menor
 const centipede = [
     { x: 10, y: 10 },
     { x: 9, y: 10 },
@@ -33,7 +30,6 @@ const centipede = [
 let direction = { x: 1, y: 0 };
 let nextDirection = { x: 1, y: 0 };
 
-// Tipos de insetos
 const INSECT_TYPES = {
     MOSQUITO: 'mosquito',
     ABELHA: 'abelha',
@@ -46,17 +42,14 @@ const INSECT_DATA = {
     aranha: { points: 3, chance: 20, color: '#e74c3c' }
 };
 
-// Inseto
 let insect = {
     x: Math.floor(Math.random() * tileCount),
     y: Math.floor(Math.random() * tileCount),
     type: generateInsectType()
 };
 
-// Paredes (aparecem progressivamente)
 let walls = [];
 
-// Função para gerar tipo de inseto baseado em chance
 function generateInsectType() {
     const rand = Math.random() * 100;
     if (rand < 40) return INSECT_TYPES.MOSQUITO;
@@ -64,7 +57,6 @@ function generateInsectType() {
     return INSECT_TYPES.ARANHA;
 }
 
-// Controladores
 startBtn.addEventListener('click', () => {
     if (!gameRunning) {
         gameRunning = true;
@@ -85,7 +77,6 @@ pauseBtn.addEventListener('click', () => {
     }
 });
 
-// Controles com WASD e Setas
 document.addEventListener('keydown', (e) => {
     if (!gameRunning) return;
     
@@ -122,76 +113,57 @@ document.addEventListener('keydown', (e) => {
 function gameLoop() {
     if (!gameRunning || gamePaused) return;
     
-    // Atualizar direção
     direction = nextDirection;
     
-    // Calcular nova cabeça
     const head = centipede[0];
     const newHead = {
         x: head.x + direction.x,
         y: head.y + direction.y
     };
     
-    // Verificar colisão com parede
     if (newHead.x < 0 || newHead.x >= tileCount || newHead.y < 0 || newHead.y >= tileCount) {
         endGame();
         return;
     }
     
-    // Verificar colisão consigo mesma
     if (centipede.some(segment => segment.x === newHead.x && segment.y === newHead.y)) {
         endGame();
         return;
     }
     
-    // Verificar colisão com paredes
     if (walls.some(wall => wall.x === newHead.x && wall.y === newHead.y)) {
         endGame();
         return;
     }
     
-    // Adicionar nova cabeça
     centipede.unshift(newHead);
     
-    // Verificar se comeu inseto
     if (newHead.x === insect.x && newHead.y === insect.y) {
         const points = INSECT_DATA[insect.type].points;
         score += points;
         insectCount++;
         
-        // Sistema progressivo de paredes
         let wallsToAdd = 0;
         if (score >= 60) {
-            // Após 60 pontos: 3 paredes a cada 2 insetos
             if (insectCount % 2 === 0) wallsToAdd = 3;
         } else if (score >= 30) {
-            // Após 30 pontos: 2 paredes a cada 2 insetos
             if (insectCount % 2 === 0) wallsToAdd = 2;
         } else if (score >= 10) {
-            // Após 10 pontos: 1 parede a cada 2 insetos
             if (insectCount % 2 === 0) wallsToAdd = 1;
         }
         
-        // Adicionar as paredes
         for (let i = 0; i < wallsToAdd; i++) {
             addWall();
         }
         
-        // Gerar novo inseto
         spawnInsect();
-        // Não remover cauda (centopeia cresce)
     } else {
-        // Remover cauda se não comeu
         centipede.pop();
     }
     
-    // Atualizar display
     updateDisplay();
-    
-    // Desenhar
     draw();
     
-    // Próximo frame
     setTimeout(gameLoop, 100);
 }
 
@@ -205,7 +177,6 @@ function addWall() {
             y: Math.floor(Math.random() * tileCount)
         };
         
-        // Verificar se não colide com a centopeia ou inseto
         valid = !centipede.some(segment => segment.x === newWall.x && segment.y === newWall.y) &&
                 !(newWall.x === insect.x && newWall.y === insect.y) &&
                 !walls.some(w => w.x === newWall.x && w.y === newWall.y);
@@ -226,7 +197,6 @@ function spawnInsect() {
             type: generateInsectType()
         };
         
-        // Verificar se não colide com a centopeia ou paredes
         valid = !centipede.some(segment => segment.x === newInsect.x && segment.y === newInsect.y) &&
                 !walls.some(wall => wall.x === newInsect.x && wall.y === newInsect.y);
     }
@@ -235,11 +205,9 @@ function spawnInsect() {
 }
 
 function draw() {
-    // Limpar canvas
     ctx.fillStyle = '#f5f7fa';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Desenhar grade
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
     ctx.lineWidth = 1;
     for (let i = 0; i <= tileCount; i++) {
@@ -254,15 +222,12 @@ function draw() {
         ctx.stroke();
     }
     
-    // Desenhar paredes
     walls.forEach(wall => {
         drawWall(wall.x, wall.y);
     });
     
-    // Desenhar inseto
     drawInsect(insect.x, insect.y, insect.type);
     
-    // Desenhar centopeia
     centipede.forEach((segment, index) => {
         if (index === 0) {
             drawHead(segment.x, segment.y);
@@ -271,7 +236,6 @@ function draw() {
         }
     });
     
-    // Desenhar número de pernas
     ctx.fillStyle = '#333';
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
@@ -286,16 +250,13 @@ function drawWall(x, y) {
     const centerX = x * gridSize + gridSize / 2;
     const centerY = y * gridSize + gridSize / 2;
     
-    // Desenhar parede cinza sólida
     ctx.fillStyle = '#95a5a6';
     ctx.fillRect(x * gridSize + 2, y * gridSize + 2, gridSize - 4, gridSize - 4);
     
-    // Borda mais escura
     ctx.strokeStyle = '#34495e';
     ctx.lineWidth = 2;
     ctx.strokeRect(x * gridSize + 2, y * gridSize + 2, gridSize - 4, gridSize - 4);
     
-    // Padrão de cruz
     ctx.strokeStyle = '#34495e';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -313,18 +274,15 @@ function drawHead(x, y) {
     const centerY = y * gridSize + gridSize / 2;
     const radius = gridSize / 2.2;
     
-    // Corpo principal
     ctx.fillStyle = '#e74c3c';
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
     ctx.fill();
     
-    // Borda
     ctx.strokeStyle = '#c0392b';
     ctx.lineWidth = 2;
     ctx.stroke();
     
-    // Olhos
     ctx.fillStyle = 'white';
     const eyeRadius = 3;
     const eyeOffset = 4;
@@ -344,7 +302,6 @@ function drawHead(x, y) {
         ctx.fill();
     }
     
-    // Antenas
     ctx.strokeStyle = '#e74c3c';
     ctx.lineWidth = 3;
     const antennaLength = gridSize * 0.8;
@@ -372,7 +329,6 @@ function drawSegment(x, y, index) {
     const centerY = y * gridSize + gridSize / 2;
     const size = gridSize / 2.4;
     
-    // Variação de cor (gradiente)
     const hue = 20 + (index * 5) % 30;
     ctx.fillStyle = `hsl(${hue}, 85%, 50%)`;
     
@@ -380,12 +336,10 @@ function drawSegment(x, y, index) {
     ctx.arc(centerX, centerY, size, 0, Math.PI * 2);
     ctx.fill();
     
-    // Borda
     ctx.strokeStyle = `hsl(${hue}, 85%, 30%)`;
     ctx.lineWidth = 1;
     ctx.stroke();
     
-    // Pernas (8 pernas em vez de 4, saindo para todos os lados)
     ctx.strokeStyle = `hsl(${hue}, 85%, 40%)`;
     ctx.lineWidth = 2;
     
@@ -418,24 +372,20 @@ function drawInsect(x, y, type) {
 function drawMosquito(centerX, centerY) {
     const size = gridSize / 3;
     
-    // Corpo fino e alongado (azul)
     ctx.fillStyle = '#3498db';
     ctx.beginPath();
     ctx.ellipse(centerX, centerY, size / 1.5, size * 1.2, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // Borda
     ctx.strokeStyle = '#2980b9';
     ctx.lineWidth = 1;
     ctx.stroke();
     
-    // Cabeça
     ctx.fillStyle = '#2c3e50';
     ctx.beginPath();
     ctx.arc(centerX, centerY - size * 1.2, size / 2, 0, Math.PI * 2);
     ctx.fill();
     
-    // Pernas longas e finas (4 pares)
     ctx.strokeStyle = '#3498db';
     ctx.lineWidth = 1;
     for (let i = 0; i < 6; i++) {
@@ -450,7 +400,6 @@ function drawMosquito(centerX, centerY) {
         ctx.stroke();
     }
     
-    // Tromba (probóscida)
     ctx.strokeStyle = '#2c3e50';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -462,13 +411,11 @@ function drawMosquito(centerX, centerY) {
 function drawAbelha(centerX, centerY) {
     const size = gridSize / 2.5;
     
-    // Corpo com listras amarelas e pretas
     ctx.fillStyle = '#f39c12';
     ctx.beginPath();
     ctx.ellipse(centerX, centerY, size * 0.8, size * 1.3, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // Listras pretas
     ctx.strokeStyle = '#2c3e50';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -484,13 +431,11 @@ function drawAbelha(centerX, centerY) {
     ctx.lineTo(centerX + size * 0.8, centerY + size * 0.4);
     ctx.stroke();
     
-    // Cabeça preta
     ctx.fillStyle = '#2c3e50';
     ctx.beginPath();
     ctx.arc(centerX, centerY - size * 1.2, size / 2.5, 0, Math.PI * 2);
     ctx.fill();
     
-    // Asas (triângulos translúcidos)
     ctx.fillStyle = 'rgba(200, 220, 255, 0.4)';
     ctx.beginPath();
     ctx.moveTo(centerX - size * 0.3, centerY - size * 0.5);
@@ -506,7 +451,6 @@ function drawAbelha(centerX, centerY) {
     ctx.closePath();
     ctx.fill();
     
-    // Pernas
     ctx.strokeStyle = '#2c3e50';
     ctx.lineWidth = 1.5;
     for (let i = 0; i < 6; i++) {
@@ -521,7 +465,6 @@ function drawAbelha(centerX, centerY) {
         ctx.stroke();
     }
     
-    // Antenas
     ctx.strokeStyle = '#2c3e50';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -538,24 +481,20 @@ function drawAbelha(centerX, centerY) {
 function drawAranha(centerX, centerY) {
     const size = gridSize / 2;
     
-    // Corpo principal (abdômen e cefalotórax)
     ctx.fillStyle = '#e74c3c';
     ctx.beginPath();
     ctx.ellipse(centerX, centerY, size * 0.7, size * 1.1, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // Borda
     ctx.strokeStyle = '#c0392b';
     ctx.lineWidth = 1.5;
     ctx.stroke();
     
-    // Cabeça
     ctx.fillStyle = '#c0392b';
     ctx.beginPath();
     ctx.arc(centerX, centerY - size * 1, size / 2.5, 0, Math.PI * 2);
     ctx.fill();
     
-    // Olhos (8 pequenos olhos em 2 linhas)
     ctx.fillStyle = 'white';
     const eyeRadius = 1.5;
     const eyeRow1Y = centerY - size * 1;
@@ -575,7 +514,6 @@ function drawAranha(centerX, centerY) {
         ctx.fill();
     }
     
-    // 8 pernas longas e finas
     ctx.strokeStyle = '#c0392b';
     ctx.lineWidth = 2;
     for (let i = 0; i < 8; i++) {
@@ -590,7 +528,6 @@ function drawAranha(centerX, centerY) {
         ctx.stroke();
     }
     
-    // Quelíceras (pequenos apêndices)
     ctx.strokeStyle = '#2c3e50';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -619,5 +556,4 @@ function endGame() {
     gameOverScreen.classList.remove('hidden');
 }
 
-// Iniciar desenho do jogo vazio
 draw();
