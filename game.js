@@ -22,26 +22,47 @@ let score = 0;
 let insectCount = 0;
 let wallCount = 0;
 
-// Centopeia com tamanho inicial maior
+// Centopeia com tamanho ligeiramente menor
 const centipede = [
     { x: 10, y: 10 },
     { x: 9, y: 10 },
     { x: 8, y: 10 },
-    { x: 7, y: 10 },
-    { x: 6, y: 10 }
+    { x: 7, y: 10 }
 ];
 
 let direction = { x: 1, y: 0 };
 let nextDirection = { x: 1, y: 0 };
 
+// Tipos de insetos
+const INSECT_TYPES = {
+    MOSQUITO: 'mosquito',
+    ABELHA: 'abelha',
+    ARANHA: 'aranha'
+};
+
+const INSECT_DATA = {
+    mosquito: { points: 1, chance: 40, color: '#3498db' },
+    abelha: { points: 2, chance: 30, color: '#f39c12' },
+    aranha: { points: 3, chance: 20, color: '#e74c3c' }
+};
+
 // Inseto
 let insect = {
     x: Math.floor(Math.random() * tileCount),
-    y: Math.floor(Math.random() * tileCount)
+    y: Math.floor(Math.random() * tileCount),
+    type: generateInsectType()
 };
 
-// Paredes (aparecem após 10 pontos)
+// Paredes (aparecem progressivamente)
 let walls = [];
+
+// Função para gerar tipo de inseto baseado em chance
+function generateInsectType() {
+    const rand = Math.random() * 100;
+    if (rand < 40) return INSECT_TYPES.MOSQUITO;
+    if (rand < 70) return INSECT_TYPES.ABELHA;
+    return INSECT_TYPES.ARANHA;
+}
 
 // Controladores
 startBtn.addEventListener('click', () => {
@@ -134,11 +155,25 @@ function gameLoop() {
     
     // Verificar se comeu inseto
     if (newHead.x === insect.x && newHead.y === insect.y) {
-        score += 10 * centipede.length;
+        const points = INSECT_DATA[insect.type].points;
+        score += points;
         insectCount++;
         
-        // A cada novo inseto após 10 pontos, adiciona uma parede
-        if (insectCount > 1 && insectCount % 1 === 0 && score >= 10) {
+        // Sistema progressivo de paredes
+        let wallsToAdd = 0;
+        if (score >= 60) {
+            // Após 60 pontos: 3 paredes a cada 2 insetos
+            if (insectCount % 2 === 0) wallsToAdd = 3;
+        } else if (score >= 30) {
+            // Após 30 pontos: 2 paredes a cada 2 insetos
+            if (insectCount % 2 === 0) wallsToAdd = 2;
+        } else if (score >= 10) {
+            // Após 10 pontos: 1 parede a cada 2 insetos
+            if (insectCount % 2 === 0) wallsToAdd = 1;
+        }
+        
+        // Adicionar as paredes
+        for (let i = 0; i < wallsToAdd; i++) {
             addWall();
         }
         
@@ -187,7 +222,8 @@ function spawnInsect() {
     while (!valid) {
         newInsect = {
             x: Math.floor(Math.random() * tileCount),
-            y: Math.floor(Math.random() * tileCount)
+            y: Math.floor(Math.random() * tileCount),
+            type: generateInsectType()
         };
         
         // Verificar se não colide com a centopeia ou paredes
@@ -224,7 +260,7 @@ function draw() {
     });
     
     // Desenhar inseto
-    drawInsect(insect.x, insect.y);
+    drawInsect(insect.x, insect.y, insect.type);
     
     // Desenhar centopeia
     centipede.forEach((segment, index) => {
@@ -275,9 +311,9 @@ function drawWall(x, y) {
 function drawHead(x, y) {
     const centerX = x * gridSize + gridSize / 2;
     const centerY = y * gridSize + gridSize / 2;
-    const radius = gridSize / 2 - 1;
+    const radius = gridSize / 2.2;
     
-    // Corpo principal maior
+    // Corpo principal
     ctx.fillStyle = '#e74c3c';
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
@@ -308,10 +344,10 @@ function drawHead(x, y) {
         ctx.fill();
     }
     
-    // Antenas maiores
+    // Antenas
     ctx.strokeStyle = '#e74c3c';
     ctx.lineWidth = 3;
-    const antennaLength = gridSize * 1;
+    const antennaLength = gridSize * 0.8;
     const angle = Math.atan2(direction.y, direction.x);
     
     ctx.beginPath();
@@ -334,7 +370,7 @@ function drawHead(x, y) {
 function drawSegment(x, y, index) {
     const centerX = x * gridSize + gridSize / 2;
     const centerY = y * gridSize + gridSize / 2;
-    const size = gridSize / 2 - 1;
+    const size = gridSize / 2.4;
     
     // Variação de cor (gradiente)
     const hue = 20 + (index * 5) % 30;
@@ -349,13 +385,13 @@ function drawSegment(x, y, index) {
     ctx.lineWidth = 1;
     ctx.stroke();
     
-    // Pernas MAIORES (8 pernas em vez de 4, saindo para todos os lados)
+    // Pernas (8 pernas em vez de 4, saindo para todos os lados)
     ctx.strokeStyle = `hsl(${hue}, 85%, 40%)`;
     ctx.lineWidth = 2;
     
     for (let i = 0; i < 8; i++) {
         const angle = (Math.PI * 2 * i) / 8;
-        const legLength = size * 1.8;
+        const legLength = size * 1.5;
         ctx.beginPath();
         ctx.moveTo(centerX, centerY);
         ctx.lineTo(
@@ -366,26 +402,113 @@ function drawSegment(x, y, index) {
     }
 }
 
-function drawInsect(x, y) {
+function drawInsect(x, y, type) {
     const centerX = x * gridSize + gridSize / 2;
     const centerY = y * gridSize + gridSize / 2;
-    const size = gridSize / 2.5;
     
-    // Corpo do inseto (verde)
-    ctx.fillStyle = '#27ae60';
+    if (type === INSECT_TYPES.MOSQUITO) {
+        drawMosquito(centerX, centerY);
+    } else if (type === INSECT_TYPES.ABELHA) {
+        drawAbelha(centerX, centerY);
+    } else if (type === INSECT_TYPES.ARANHA) {
+        drawAranha(centerX, centerY);
+    }
+}
+
+function drawMosquito(centerX, centerY) {
+    const size = gridSize / 3;
+    
+    // Corpo fino e alongado (azul)
+    ctx.fillStyle = '#3498db';
     ctx.beginPath();
-    ctx.ellipse(centerX, centerY, size, size * 1.3, 0, 0, Math.PI * 2);
+    ctx.ellipse(centerX, centerY, size / 1.5, size * 1.2, 0, 0, Math.PI * 2);
     ctx.fill();
     
     // Borda
-    ctx.strokeStyle = '#229954';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#2980b9';
+    ctx.lineWidth = 1;
     ctx.stroke();
     
-    // Pernas
-    ctx.strokeStyle = '#229954';
-    ctx.lineWidth = 2;
+    // Cabeça
+    ctx.fillStyle = '#2c3e50';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY - size * 1.2, size / 2, 0, Math.PI * 2);
+    ctx.fill();
     
+    // Pernas longas e finas (4 pares)
+    ctx.strokeStyle = '#3498db';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI * i) / 3 - Math.PI / 2;
+        const legLength = size * 1.5;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(
+            centerX + Math.cos(angle) * legLength,
+            centerY + Math.sin(angle) * legLength
+        );
+        ctx.stroke();
+    }
+    
+    // Tromba (probóscida)
+    ctx.strokeStyle = '#2c3e50';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY - size * 1.2);
+    ctx.lineTo(centerX, centerY - size * 1.8);
+    ctx.stroke();
+}
+
+function drawAbelha(centerX, centerY) {
+    const size = gridSize / 2.5;
+    
+    // Corpo com listras amarelas e pretas
+    ctx.fillStyle = '#f39c12';
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY, size * 0.8, size * 1.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Listras pretas
+    ctx.strokeStyle = '#2c3e50';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(centerX - size * 0.8, centerY - size * 0.4);
+    ctx.lineTo(centerX + size * 0.8, centerY - size * 0.4);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(centerX - size * 0.8, centerY);
+    ctx.lineTo(centerX + size * 0.8, centerY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(centerX - size * 0.8, centerY + size * 0.4);
+    ctx.lineTo(centerX + size * 0.8, centerY + size * 0.4);
+    ctx.stroke();
+    
+    // Cabeça preta
+    ctx.fillStyle = '#2c3e50';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY - size * 1.2, size / 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Asas (triângulos translúcidos)
+    ctx.fillStyle = 'rgba(200, 220, 255, 0.4)';
+    ctx.beginPath();
+    ctx.moveTo(centerX - size * 0.3, centerY - size * 0.5);
+    ctx.lineTo(centerX - size * 0.8, centerY - size * 1);
+    ctx.lineTo(centerX - size * 0.5, centerY);
+    ctx.closePath();
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.moveTo(centerX + size * 0.3, centerY - size * 0.5);
+    ctx.lineTo(centerX + size * 0.8, centerY - size * 1);
+    ctx.lineTo(centerX + size * 0.5, centerY);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Pernas
+    ctx.strokeStyle = '#2c3e50';
+    ctx.lineWidth = 1.5;
     for (let i = 0; i < 6; i++) {
         const angle = (Math.PI * i) / 3;
         const legLength = size * 1.2;
@@ -399,14 +522,85 @@ function drawInsect(x, y) {
     }
     
     // Antenas
+    ctx.strokeStyle = '#2c3e50';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(centerX - size / 2, centerY - size);
-    ctx.lineTo(centerX - size / 2 - 5, centerY - size - 8);
+    ctx.moveTo(centerX - size * 0.3, centerY - size * 1.5);
+    ctx.lineTo(centerX - size * 0.5, centerY - size * 2);
     ctx.stroke();
     
     ctx.beginPath();
-    ctx.moveTo(centerX + size / 2, centerY - size);
-    ctx.lineTo(centerX + size / 2 + 5, centerY - size - 8);
+    ctx.moveTo(centerX + size * 0.3, centerY - size * 1.5);
+    ctx.lineTo(centerX + size * 0.5, centerY - size * 2);
+    ctx.stroke();
+}
+
+function drawAranha(centerX, centerY) {
+    const size = gridSize / 2;
+    
+    // Corpo principal (abdômen e cefalotórax)
+    ctx.fillStyle = '#e74c3c';
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY, size * 0.7, size * 1.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Borda
+    ctx.strokeStyle = '#c0392b';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    
+    // Cabeça
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY - size * 1, size / 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Olhos (8 pequenos olhos em 2 linhas)
+    ctx.fillStyle = 'white';
+    const eyeRadius = 1.5;
+    const eyeRow1Y = centerY - size * 1;
+    const eyeRow2Y = centerY - size * 0.8;
+    
+    for (let i = 0; i < 4; i++) {
+        const x = centerX - size * 0.3 + (i * size * 0.15);
+        ctx.beginPath();
+        ctx.arc(x, eyeRow1Y, eyeRadius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    for (let i = 0; i < 4; i++) {
+        const x = centerX - size * 0.3 + (i * size * 0.15);
+        ctx.beginPath();
+        ctx.arc(x, eyeRow2Y, eyeRadius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // 8 pernas longas e finas
+    ctx.strokeStyle = '#c0392b';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 8; i++) {
+        const angle = (Math.PI * 2 * i) / 8;
+        const legLength = size * 1.8;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(
+            centerX + Math.cos(angle) * legLength,
+            centerY + Math.sin(angle) * legLength
+        );
+        ctx.stroke();
+    }
+    
+    // Quelíceras (pequenos apêndices)
+    ctx.strokeStyle = '#2c3e50';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(centerX - size * 0.2, centerY - size * 0.8);
+    ctx.lineTo(centerX - size * 0.35, centerY - size * 0.6);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(centerX + size * 0.2, centerY - size * 0.8);
+    ctx.lineTo(centerX + size * 0.35, centerY - size * 0.6);
     ctx.stroke();
 }
 
