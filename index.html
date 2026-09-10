@@ -31,6 +31,390 @@
             </div>
         </div>
     </div>
-    <script src="app.js?t=new"></script>
+
+    <script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const startBtn = document.getElementById('startBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const scoreDisplay = document.getElementById('score');
+const lengthDisplay = document.getElementById('length');
+const insectsDisplay = document.getElementById('insects');
+const wallsDisplay = document.getElementById('walls');
+const gameOverScreen = document.getElementById('gameOver');
+const finalScoreDisplay = document.getElementById('finalScore');
+const finalLengthDisplay = document.getElementById('finalLength');
+const finalWallsDisplay = document.getElementById('finalWalls');
+
+const gridSize = 20;
+const tileCount = canvas.width / gridSize;
+
+let gameRunning = false;
+let gamePaused = false;
+let score = 0;
+let insectCount = 0;
+let wallCount = 0;
+
+const centipede = [
+    { x: 10, y: 10 },
+    { x: 9, y: 10 },
+    { x: 8, y: 10 },
+    { x: 7, y: 10 }
+];
+
+let direction = { x: 1, y: 0 };
+let nextDirection = { x: 1, y: 0 };
+
+const INSECT_TYPES = {
+    MOSQUITO: 'mosquito',
+    ABELHA: 'abelha',
+    ARANHA: 'aranha'
+};
+
+const INSECT_DATA = {
+    mosquito: { points: 1, chance: 45 },
+    abelha: { points: 2, chance: 40 },
+    aranha: { points: 3, chance: 15 }
+};
+
+let insect = {
+    x: Math.floor(Math.random() * tileCount),
+    y: Math.floor(Math.random() * tileCount),
+    type: generateInsectType()
+};
+
+let walls = [];
+let wallPattern = ['meio', 'esquerda', 'direita', 'meio', 'direita-esquerda'];
+let wallPatternIndex = 0;
+
+function generateInsectType() {
+    const rand = Math.random() * 100;
+    if (rand < 45) return INSECT_TYPES.MOSQUITO;
+    if (rand < 85) return INSECT_TYPES.ABELHA;
+    return INSECT_TYPES.ARANHA;
+}
+
+startBtn.addEventListener('click', () => {
+    if (!gameRunning) {
+        gameRunning = true;
+        gamePaused = false;
+        pauseBtn.textContent = 'Pausar';
+        gameOverScreen.classList.add('hidden');
+        gameLoop();
+    }
+});
+
+pauseBtn.addEventListener('click', () => {
+    if (gameRunning) {
+        gamePaused = !gamePaused;
+        pauseBtn.textContent = gamePaused ? 'Retomar' : 'Pausar';
+        if (!gamePaused) {
+            gameLoop();
+        }
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    if (!gameRunning) return;
+    
+    let handled = false;
+    
+    switch(e.key.toLowerCase()) {
+        case 'w':
+        case 'arrowup':
+            if (direction.y === 0) nextDirection = { x: 0, y: -1 };
+            handled = true;
+            break;
+        case 's':
+        case 'arrowdown':
+            if (direction.y === 0) nextDirection = { x: 0, y: 1 };
+            handled = true;
+            break;
+        case 'a':
+        case 'arrowleft':
+            if (direction.x === 0) nextDirection = { x: -1, y: 0 };
+            handled = true;
+            break;
+        case 'd':
+        case 'arrowright':
+            if (direction.x === 0) nextDirection = { x: 1, y: 0 };
+            handled = true;
+            break;
+    }
+    
+    if (handled) {
+        e.preventDefault();
+    }
+});
+
+function gameLoop() {
+    if (!gameRunning || gamePaused) return;
+    
+    direction = nextDirection;
+    
+    const head = centipede[0];
+    const newHead = {
+        x: head.x + direction.x,
+        y: head.y + direction.y
+    };
+    
+    if (newHead.x < 0 || newHead.x >= tileCount || newHead.y < 0 || newHead.y >= tileCount) {
+        endGame();
+        return;
+    }
+    
+    if (centipede.some(segment => segment.x === newHead.x && segment.y === newHead.y)) {
+        endGame();
+        return;
+    }
+    
+    if (walls.some(wall => wall.x === newHead.x && wall.y === newHead.y)) {
+        endGame();
+        return;
+    }
+    
+    centipede.unshift(newHead);
+    
+    if (newHead.x === insect.x && newHead.y === insect.y) {
+        const points = INSECT_DATA[insect.type].points;
+        score += points;
+        insectCount++;
+        
+        let wallsToAdd = 0;
+        if (score >= 60) {
+            if (insectCount % 2 === 0) wallsToAdd = 3;
+        } else if (score >= 30) {
+            if (insectCount % 2 === 0) wallsToAdd = 2;
+        } else if (score >= 10) {
+            if (insectCount % 2 === 0) wallsToAdd = 1;
+        }
+        
+        for (let i = 0; i < wallsToAdd; i++) {
+            addWall();
+        }
+        
+        spawnInsect();
+    } else {
+        centipede.pop();
+    }
+    
+    updateDisplay();
+    draw();
+    
+    setTimeout(gameLoop, 100);
+}
+
+function addWall() {
+    let newWall;
+    let valid = false;
+    let attempts = 0;
+    
+    const pattern = wallPattern[wallPatternIndex % wallPattern.length];
+    wallPatternIndex++;
+    
+    while (!valid && attempts < 50) {
+        if (pattern === 'meio') {
+            newWall = {
+                x: Math.floor(tileCount / 2) + Math.floor((Math.random() - 0.5) * 6),
+                y: Math.floor(Math.random() * tileCount)
+            };
+        } else if (pattern === 'esquerda') {
+            newWall = {
+                x: Math.floor(Math.random() * (tileCount / 2)),
+                y: Math.floor(Math.random() * tileCount)
+            };
+        } else if (pattern === 'direita') {
+            newWall = {
+                x: Math.floor(tileCount / 2) + Math.floor(Math.random() * (tileCount / 2)),
+                y: Math.floor(Math.random() * tileCount)
+            };
+        } else {
+            newWall = {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount)
+            };
+        }
+        
+        valid = !centipede.some(segment => segment.x === newWall.x && segment.y === newWall.y) &&
+                !(newWall.x === insect.x && newWall.y === insect.y) &&
+                !walls.some(w => w.x === newWall.x && w.y === newWall.y) &&
+                newWall.x >= 0 && newWall.x < tileCount &&
+                newWall.y >= 0 && newWall.y < tileCount;
+        
+        attempts++;
+    }
+    
+    if (valid) {
+        walls.push(newWall);
+        wallCount++;
+    }
+}
+
+function spawnInsect() {
+    let newInsect;
+    let valid = false;
+    let attempts = 0;
+    
+    while (!valid && attempts < 100) {
+        newInsect = {
+            x: Math.floor(Math.random() * tileCount),
+            y: Math.floor(Math.random() * tileCount),
+            type: generateInsectType()
+        };
+        
+        const head = centipede[0];
+        const distanceFromHead = Math.max(Math.abs(newInsect.x - head.x), Math.abs(newInsect.y - head.y));
+        
+        valid = distanceFromHead > 7 &&
+                !centipede.some(segment => segment.x === newInsect.x && segment.y === newInsect.y) &&
+                !walls.some(wall => wall.x === newInsect.x && wall.y === newInsect.y);
+        
+        attempts++;
+    }
+    
+    if (valid) {
+        insect = newInsect;
+    }
+}
+
+function draw() {
+    ctx.fillStyle = '#f5f7fa';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= tileCount; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * gridSize, 0);
+        ctx.lineTo(i * gridSize, canvas.height);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(0, i * gridSize);
+        ctx.lineTo(canvas.width, i * gridSize);
+        ctx.stroke();
+    }
+    
+    walls.forEach(wall => {
+        drawWall(wall.x, wall.y);
+    });
+    
+    drawInsect(insect.x, insect.y, insect.type);
+    
+    centipede.forEach((segment, index) => {
+        if (index === 0) {
+            drawHead(segment.x, segment.y);
+        } else {
+            drawSegment(segment.x, segment.y, index);
+        }
+    });
+}
+
+function drawWall(x, y) {
+    const centerX = x * gridSize + gridSize / 2;
+    const centerY = y * gridSize + gridSize / 2;
+    
+    ctx.fillStyle = '#95a5a6';
+    ctx.fillRect(x * gridSize + 2, y * gridSize + 2, gridSize - 4, gridSize - 4);
+    
+    ctx.strokeStyle = '#34495e';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x * gridSize + 2, y * gridSize + 2, gridSize - 4, gridSize - 4);
+}
+
+function drawHead(x, y) {
+    const centerX = x * gridSize + gridSize / 2;
+    const centerY = y * gridSize + gridSize / 2;
+    const radius = gridSize / 2.2;
+    
+    ctx.fillStyle = '#e74c3c';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.strokeStyle = '#c0392b';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+function drawSegment(x, y, index) {
+    const centerX = x * gridSize + gridSize / 2;
+    const centerY = y * gridSize + gridSize / 2;
+    const size = gridSize / 2.4;
+    
+    const hue = 20 + (index * 5) % 30;
+    ctx.fillStyle = `hsl(${hue}, 85%, 50%)`;
+    
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, size, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawInsect(x, y, type) {
+    const centerX = x * gridSize + gridSize / 2;
+    const centerY = y * gridSize + gridSize / 2;
+    const size = gridSize / 3;
+    
+    if (type === INSECT_TYPES.MOSQUITO) {
+        ctx.fillStyle = '#3498db';
+        ctx.beginPath();
+        ctx.ellipse(centerX, centerY, size / 1.5, size, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2980b9';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    } else if (type === INSECT_TYPES.ABELHA) {
+        ctx.fillStyle = '#f39c12';
+        ctx.beginPath();
+        ctx.ellipse(centerX, centerY, size * 0.8, size, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2c3e50';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(centerX - size * 0.8, centerY - size * 0.3);
+        ctx.lineTo(centerX + size * 0.8, centerY - size * 0.3);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(centerX - size * 0.8, centerY + size * 0.3);
+        ctx.lineTo(centerX + size * 0.8, centerY + size * 0.3);
+        ctx.stroke();
+    } else if (type === INSECT_TYPES.ARANHA) {
+        ctx.fillStyle = '#e74c3c';
+        ctx.beginPath();
+        ctx.ellipse(centerX, centerY, size * 0.7, size * 0.9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#c0392b';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 8; i++) {
+            const angle = (Math.PI * 2 * i) / 8;
+            const legLength = size * 1.5;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(
+                centerX + Math.cos(angle) * legLength,
+                centerY + Math.sin(angle) * legLength
+            );
+            ctx.stroke();
+        }
+    }
+}
+
+function updateDisplay() {
+    scoreDisplay.textContent = score;
+    lengthDisplay.textContent = centipede.length;
+    insectsDisplay.textContent = insectCount;
+    wallsDisplay.textContent = wallCount;
+}
+
+function endGame() {
+    gameRunning = false;
+    finalScoreDisplay.textContent = score;
+    finalLengthDisplay.textContent = centipede.length;
+    finalWallsDisplay.textContent = wallCount;
+    gameOverScreen.classList.remove('hidden');
+}
+
+draw();
+    </script>
 </body>
 </html>
