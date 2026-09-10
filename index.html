@@ -11,12 +11,13 @@
         <h1>🐛 Jogo da Centopeia 🐛</h1>
         <div class="score-board">
             <div>Pontos: <span id="score">0</span></div>
-            <div>Tamanho: <span id="length">3</span> pernas</div>
-            <div>Insetos comidos: <span id="insects">0</span></div>
+            <div>Tamanho: <span id="length">5</span> pernas</div>
+            <div>Insetos: <span id="insects">0</span></div>
+            <div>Paredes: <span id="walls">0</span></div>
         </div>
-        <canvas id="gameCanvas" width="600" height="600"></canvas>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
         <div class="controls">
-            <p>Use as <strong>SETAS</strong> do teclado para controlar</p>
+            <p>Use <strong>W, A, S, D</strong> ou <strong>SETAS</strong> para controlar</p>
             <button id="startBtn">Iniciar Jogo</button>
             <button id="pauseBtn">Pausar</button>
         </div>
@@ -25,6 +26,7 @@
                 <h2>GAME OVER!</h2>
                 <p>Pontos Finais: <span id="finalScore">0</span></p>
                 <p>Tamanho da Centopeia: <span id="finalLength">0</span> pernas</p>
+                <p>Paredes encontradas: <span id="finalWalls">0</span></p>
                 <button onclick="location.reload()">Jogar Novamente</button>
             </div>
         </div>
